@@ -1,0 +1,19 @@
+.
+├── README.md
+├── ephemeral-text.png
+├── ephemeral-text.pxd
+├── index.html
+├── main.js
+├── package-lock.json
+├── package.json
+├── postcss.config.js
+├── preload.js
+├── public
+│   └── tailwind.css
+├── renderer.js
+├── src
+│   └── input.css
+├── tailwind.config.js
+└── tree.txt
+
+3 directories, 14 files
