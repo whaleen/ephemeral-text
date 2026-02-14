@@ -2,8 +2,8 @@
 
 A minimalist, ephemeral text editor built with Tauri. It intentionally never auto-saves and never prompts you to save on close. Your text only persists when you explicitly export it.
 
-Legacy Electron version lives on `legacy-electron`:
-- https://github.com/whaleen/ephemeral-text/tree/legacy-electron
+Legacy Electron snapshot:
+- https://github.com/whaleen/ephemeral-text/tree/legacy-electron-snapshot
 
 ## Core Philosophy
 
