@@ -2,6 +2,9 @@
 
 A minimalist, ephemeral text editor built with Tauri. It intentionally never auto-saves and never prompts you to save on close. Your text only persists when you explicitly export it.
 
+Legacy Electron version lives on `legacy-electron`:
+- https://github.com/whaleen/ephemeral-text/tree/legacy-electron
+
 ## Core Philosophy
 
 - No auto-saving
@@ -13,7 +16,7 @@ A minimalist, ephemeral text editor built with Tauri. It intentionally never aut
 ## Features
 
 - Dark/light theme toggle
-- Markdown-first editor (CodeMirror)
+- Rich Markdown editor with live formatting (TipTap)
 - Rich keyboard shortcuts for formatting
 - Export to `.txt` or `.md`
 - Configurable export directory
@@ -44,7 +47,7 @@ A minimalist, ephemeral text editor built with Tauri. It intentionally never aut
 ### Prerequisites
 
 - Node.js (LTS)
-- npm
+- Bun
 - Rust toolchain (for Tauri)
 
 ### Install
@@ -53,7 +56,7 @@ A minimalist, ephemeral text editor built with Tauri. It intentionally never aut
 bun install
 ```
 
-### Run (Tauri)
+### Run (Desktop)
 
 ```bash
 bun run tauri dev
@@ -65,14 +68,19 @@ bun run tauri dev
 bun run dev
 ```
 
+### Build (Desktop)
+
+```bash
+bun run tauri build
+```
+
 ## Bun Notes
 
 - This project uses Bun for JS deps and scripts.
-- If you prefer npm, re-create `package-lock.json` with `npm install`.
 
 ## Notes
 
-- Export directory selection currently uses a manual path prompt.
+- Export directory selection uses a native folder picker.
 
 ## Project Structure
 
