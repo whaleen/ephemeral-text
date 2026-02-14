@@ -1,15 +1,8 @@
-// tailwind.config.js
 /** @type {import('tailwindcss').Config} */
-module.exports = {
-  darkMode: 'class',
+export default {
   content: [
-    './src/**/*.{html,js,jsx,ts,tsx}',
-    './*.{html,js,jsx,ts,tsx}',
-    './components/**/*.{js,ts,jsx,tsx}',
-    './node_modules/shadcn-ui/components/**/*.{js,ts,jsx,tsx}'
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-};
+  darkMode: "selector",
+}

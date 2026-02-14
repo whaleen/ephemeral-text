@@ -1,0 +1,470 @@
+import { Editor, Extension } from '@tiptap/core';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
+import Link from '@tiptap/extension-link';
+import Image from '@tiptap/extension-image';
+import BulletList from '@tiptap/extension-bullet-list';
+import OrderedList from '@tiptap/extension-ordered-list';
+import ListItem from '@tiptap/extension-list-item';
+import Table from '@tiptap/extension-table';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
+import TableRow from '@tiptap/extension-table-row';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
+import { Markdown } from 'tiptap-markdown';
+import { Plugin, PluginKey } from 'prosemirror-state';
+import { Decoration, DecorationSet } from 'prosemirror-view';
+import { HarperCorrectionMenu, HarperSuggestion } from './HarperCorrectionMenu';
+import { PromptModal } from './PromptModal';
+
+let harperInstance: any = null;
+
+async function initializeHarper() {
+  if (harperInstance) return harperInstance;
+
+  try {
+    const Harper = await import('harper.js');
+    harperInstance = new Harper.LocalLinter({
+      binary: Harper.binaryInlined,
+    });
+    await harperInstance.setup();
+    return harperInstance;
+  } catch (error) {
+    console.error('Harper grammar checker failed to initialize:', error);
+    return null;
+  }
+}
+
+async function checkGrammar(text: string): Promise<HarperSuggestion[]> {
+  const harper = await initializeHarper();
+  if (!harper) return [];
+
+  try {
+    const result = await harper.lint(text, { language: 'markdown' });
+    if (!result || !Array.isArray(result)) return [];
+
+    return result.map((lint: any) => {
+      const span = lint.span();
+      const suggestions = lint.suggestions();
+
+      return {
+        start: span.start,
+        end: span.end,
+        message: lint.message(),
+        replacements: suggestions.map((s: any) => s.get_replacement_text()),
+      };
+    });
+  } catch (error) {
+    console.error('Harper grammar check failed:', error);
+    return [];
+  }
+}
+
+type MarkdownStorage = {
+  getMarkdown?: () => string;
+  setMarkdown?: (value: string) => void;
+};
+
+type HarperPluginState = {
+  decorations: DecorationSet;
+};
+
+export class MarkdownEditor {
+  private editor!: Editor;
+  private container: HTMLElement;
+  private correctionMenu: HarperCorrectionMenu;
+  private harperPluginKey = new PluginKey<HarperPluginState>('harper-grammar');
+  private promptModal: PromptModal;
+
+  constructor(editorId: string) {
+    this.container = document.getElementById(editorId) as HTMLElement;
+    if (!this.container) {
+      throw new Error(`Editor element with id "${editorId}" not found`);
+    }
+
+    this.correctionMenu = new HarperCorrectionMenu();
+    this.promptModal = new PromptModal();
+    this.setupEditor();
+  }
+
+  private setupEditor() {
+    const harperExtension = this.createHarperExtension();
+    const shortcuts = this.createShortcutExtension();
+
+    this.editor = new Editor({
+      element: this.container,
+      autofocus: true,
+      content: '',
+      extensions: [
+        StarterKit.configure({
+          bulletList: false,
+          orderedList: false,
+          listItem: false,
+        }),
+        Link.configure({
+          openOnClick: false,
+          autolink: true,
+          linkOnPaste: true,
+          inclusive: false,
+        }),
+        Image,
+        BulletList.configure({
+          keepMarks: true,
+          keepAttributes: false,
+        }),
+        OrderedList.configure({
+          keepMarks: true,
+          keepAttributes: false,
+        }),
+        ListItem.configure({
+          keepMarks: true,
+          keepAttributes: false,
+        }),
+        Table.configure({
+          resizable: false,
+        }),
+        TableRow,
+        TableHeader,
+        TableCell,
+        TaskList,
+        TaskItem.configure({
+          nested: true,
+          HTMLAttributes: {
+            class: 'task-list-item',
+          },
+          renderHTML({ node, HTMLAttributes }) {
+            return [
+              'li',
+              HTMLAttributes,
+              ['label', ['input', { type: 'checkbox', checked: node.attrs.checked ? 'checked' : null }]],
+              ['span', 0],
+            ];
+          },
+        }),
+        Placeholder.configure({
+          placeholder: "I'm writing it down to remember it now...",
+        }),
+        Markdown.configure({
+          html: false,
+          transformCopiedText: true,
+          transformPastedText: true,
+        }),
+        shortcuts,
+        harperExtension,
+      ],
+      editorProps: {
+        attributes: {
+          class: 'prose-editor',
+        },
+      },
+    });
+
+    this.editor.on('selectionUpdate', () => {
+      const { empty } = this.editor.state.selection;
+      if (!empty) return;
+
+      if (this.editor.isActive('link')) return;
+
+      const { $from } = this.editor.state.selection;
+      const marks = $from.marks();
+      if (!marks.length) return;
+
+      const filtered = marks.filter((mark) => mark.type.name !== 'link');
+      if (filtered.length === marks.length) return;
+
+      const tr = this.editor.state.tr.setStoredMarks(filtered);
+      this.editor.view.dispatch(tr);
+    });
+  }
+
+  private createShortcutExtension() {
+    return Extension.create({
+      addKeyboardShortcuts: () => ({
+        Enter: () => {
+          if (this.editor.isActive('link')) {
+            this.editLinkAtCursor();
+            return true;
+          }
+          return false;
+        },
+        'Mod-b': () => this.editor.commands.toggleBold(),
+        'Mod-i': () => this.editor.commands.toggleItalic(),
+        'Mod-Shift-s': () => this.editor.commands.toggleStrike(),
+        'Mod-Shift-c': () => this.editor.commands.toggleCodeBlock(),
+        'Mod-Shift-q': () => this.editor.commands.toggleBlockquote(),
+        'Mod-Shift-l': () => this.editor.commands.toggleBulletList(),
+        'Mod-Shift-o': () => this.editor.commands.toggleOrderedList(),
+        'Mod-Shift-t': () => this.editor.commands.toggleTaskList(),
+        'Mod-Shift-h': () => this.editor.commands.setHorizontalRule(),
+        'Mod-Shift-x': () => this.editor.commands.insertTable({ rows: 3, cols: 3, withHeaderRow: true }),
+        'Mod-k': () => {
+          this.promptForLink();
+          return true;
+        },
+        'Mod-Shift-i': () => {
+          this.promptForImage();
+          return true;
+        },
+        'Mod-1': () => this.editor.commands.toggleHeading({ level: 1 }),
+        'Mod-2': () => this.editor.commands.toggleHeading({ level: 2 }),
+        'Mod-3': () => this.editor.commands.toggleHeading({ level: 3 }),
+        'Mod-4': () => this.editor.commands.toggleHeading({ level: 4 }),
+        'Mod-5': () => this.editor.commands.toggleHeading({ level: 5 }),
+        'Mod-6': () => this.editor.commands.toggleHeading({ level: 6 }),
+      }),
+    });
+  }
+
+  private async promptForLink() {
+    const { from, to } = this.editor.state.selection;
+    const selectedText = this.editor.state.doc.textBetween(from, to, ' ');
+    const href = await this.promptModal.show({
+      placeholder: 'https://',
+      initialValue: 'https://',
+    });
+
+    if (!href) {
+      this.editor.commands.unsetLink();
+      return;
+    }
+
+    if (selectedText) {
+      this.editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
+      this.editor.commands.setTextSelection(to);
+      this.clearStoredLink();
+      return;
+    }
+
+    const linkText = 'link text';
+    this.editor
+      .chain()
+      .focus()
+      .insertContent({
+        type: 'text',
+        text: linkText,
+        marks: [{ type: 'link', attrs: { href } }],
+      })
+      .run();
+
+    const cursorPos = from + linkText.length;
+    this.editor.commands.setTextSelection(cursorPos);
+    this.clearStoredLink();
+  }
+
+  private async editLinkAtCursor() {
+    const currentHref = this.editor.getAttributes('link').href as string | undefined;
+    const href = await this.promptModal.show({
+      placeholder: 'https://',
+      initialValue: currentHref ?? 'https://',
+    });
+
+    if (href === null) {
+      return;
+    }
+
+    if (!href) {
+      this.editor.chain().focus().extendMarkRange('link').unsetLink().run();
+      return;
+    }
+
+    this.editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
+    this.clearStoredLink();
+  }
+
+  private clearStoredLink() {
+    this.editor.commands.command(({ tr, state }) => {
+      const linkMark = state.schema.marks.link;
+      if (linkMark) {
+        tr.removeStoredMark(linkMark);
+      }
+      return true;
+    });
+  }
+
+  private async promptForImage() {
+    const src = await this.promptModal.show({
+      placeholder: 'https://',
+    });
+    if (!src) return;
+    this.editor.chain().focus().setImage({ src }).run();
+  }
+
+  private buildTextIndex(doc: any) {
+    let text = '';
+    const map: number[] = [];
+
+    const pushText = (value: string, startPos: number) => {
+      for (let i = 0; i < value.length; i += 1) {
+        map.push(startPos + i);
+      }
+      text += value;
+    };
+
+    doc.descendants((node: any, pos: number) => {
+      if (node.isTextblock) {
+        const base = pos + 1;
+        node.descendants((child: any, childPos: number) => {
+          if (child.isText && child.text) {
+            pushText(child.text, base + childPos);
+          }
+
+          if (child.type?.name === 'hardBreak') {
+            pushText('\n', base + childPos);
+          }
+        });
+
+        pushText('\n', pos + node.nodeSize - 1);
+        return false;
+      }
+      return true;
+    });
+
+    if (text.endsWith('\n')) {
+      text = text.slice(0, -1);
+      map.pop();
+    }
+
+    return { text, map };
+  }
+
+  private createHarperExtension() {
+    return Extension.create({
+      addProseMirrorPlugins: () => {
+        const menu = this.correctionMenu;
+        let debounceTimer: number | null = null;
+
+        const runLint = async (view: any) => {
+          const { text, map } = this.buildTextIndex(view.state.doc);
+          if (!text.trim()) {
+            const decorations = DecorationSet.empty;
+            view.dispatch(view.state.tr.setMeta(this.harperPluginKey, { decorations }));
+            return;
+          }
+
+          const suggestions = await checkGrammar(text);
+          const decorations: Decoration[] = [];
+
+          suggestions.forEach((suggestion) => {
+            const start = map[suggestion.start];
+            const endOffset = suggestion.end - 1;
+            const end = endOffset >= 0 ? map[endOffset] : undefined;
+
+            if (start == null || end == null) return;
+
+            const from = start;
+            const to = end + 1;
+
+            decorations.push(
+              Decoration.inline(
+                from,
+                to,
+                {
+                  class: 'harper-error',
+                  'data-message': suggestion.message,
+                  'data-replacements': JSON.stringify(suggestion.replacements),
+                  title: suggestion.message,
+                },
+                { suggestion, from, to }
+              )
+            );
+          });
+
+          const decorationSet = DecorationSet.create(view.state.doc, decorations);
+          view.dispatch(view.state.tr.setMeta(this.harperPluginKey, { decorations: decorationSet }));
+        };
+
+        return [
+          new Plugin<HarperPluginState>({
+            key: this.harperPluginKey,
+            state: {
+              init: () => ({ decorations: DecorationSet.empty }),
+              apply: (tr, value) => {
+                const meta = tr.getMeta(this.harperPluginKey);
+                if (meta?.decorations) {
+                  return { decorations: meta.decorations };
+                }
+
+                if (tr.docChanged) {
+                  return { decorations: value.decorations.map(tr.mapping, tr.doc) };
+                }
+
+                return value;
+              },
+            },
+            props: {
+              decorations: (state) => this.harperPluginKey.getState(state)?.decorations ?? DecorationSet.empty,
+              handleClick: (view, pos, event) => {
+                const pluginState = this.harperPluginKey.getState(view.state);
+                if (!pluginState) return false;
+
+                const matches = pluginState.decorations.find(pos, pos);
+                if (!matches.length) return false;
+
+                const match = matches[0];
+                const suggestion = (match.spec as any).suggestion as HarperSuggestion | undefined;
+                const from = (match.spec as any).from as number | undefined;
+                const to = (match.spec as any).to as number | undefined;
+
+                if (!suggestion || from == null || to == null) return false;
+
+                const coords = view.coordsAtPos(from);
+                const rect = new DOMRect(coords.left, coords.top, coords.right - coords.left, coords.bottom - coords.top);
+
+                menu.show(suggestion, rect, (replacement) => {
+                  this.editor.commands.command(({ tr }) => {
+                    tr.insertText(replacement, from, to);
+                    return true;
+                  });
+                });
+
+                return true;
+              },
+            },
+            view: (view) => {
+              const schedule = () => {
+                if (debounceTimer) {
+                  window.clearTimeout(debounceTimer);
+                }
+
+                debounceTimer = window.setTimeout(() => {
+                  runLint(view);
+                }, 500);
+              };
+
+              schedule();
+
+              return {
+                update: (updatedView, prevState) => {
+                  if (updatedView.state.doc !== prevState.doc) {
+                    schedule();
+                  }
+                },
+                destroy: () => {
+                  if (debounceTimer) {
+                    window.clearTimeout(debounceTimer);
+                  }
+                },
+              };
+            },
+          }),
+        ];
+      },
+    });
+  }
+
+  getValue(): string {
+    const storage = this.editor.storage as { markdown?: MarkdownStorage };
+    return storage.markdown?.getMarkdown?.() ?? this.editor.getText();
+  }
+
+  setValue(value: string) {
+    const storage = this.editor.storage as { markdown?: MarkdownStorage };
+    if (storage.markdown?.setMarkdown) {
+      storage.markdown.setMarkdown(value);
+      return;
+    }
+
+    this.editor.commands.setContent(value);
+  }
+}

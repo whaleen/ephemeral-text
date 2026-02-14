@@ -1,0 +1,242 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+/* Custom drag region styles */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.title-input-wrap {
+  min-width: 0;
+}
+
+.title-input {
+  width: min(260px, 55vw);
+  max-width: 100%;
+}
+
+.footer-mono {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.footer-shell {
+  gap: 6px;
+}
+
+.footer-row {
+  min-width: 0;
+}
+
+.footer-icon {
+  stroke-width: 1;
+}
+
+.prompt-input::placeholder {
+  color: rgb(148 163 184);
+}
+
+@media (max-width: 520px) {
+  .footer-shell {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .footer-left,
+  .footer-right {
+    width: 100%;
+  }
+
+  .footer-right {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .footer-row {
+    justify-content: space-between;
+  }
+}
+
+/* Flash effect for markdown editor */
+.flash {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  transition: background-color 0.15s ease;
+}
+
+/* TipTap editor styles */
+.prose-editor {
+  height: 100%;
+  padding: 24px;
+  font-size: 14px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  outline: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: rgb(17 24 39);
+}
+
+.dark .prose-editor {
+  color: rgb(244 244 245);
+}
+
+.prose-editor p {
+  margin: 0;
+}
+
+.prose-editor ul,
+.prose-editor ol {
+  padding-left: 1.25rem;
+  list-style-position: outside;
+}
+
+.prose-editor ul {
+  list-style-type: disc;
+}
+
+.prose-editor ol {
+  list-style-type: decimal;
+}
+
+.prose-editor li {
+  margin: 0.15rem 0;
+}
+
+.prose-editor a {
+  color: rgb(37 99 235);
+  text-decoration: underline;
+}
+
+.dark .prose-editor a {
+  color: rgb(96 165 250);
+}
+
+.prose-editor blockquote {
+  border-left: 2px solid rgb(148 163 184);
+  margin: 0.5rem 0;
+  padding-left: 0.75rem;
+  color: rgb(100 116 139);
+}
+
+.dark .prose-editor blockquote {
+  border-left-color: rgb(71 85 105);
+  color: rgb(148 163 184);
+}
+
+.prose-editor pre {
+  background: rgb(15 23 42);
+  color: rgb(226 232 240);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  overflow: auto;
+}
+
+.dark .prose-editor pre {
+  background: rgb(9 9 11);
+  color: rgb(228 228 231);
+}
+
+.prose-editor code {
+  background: rgb(226 232 240);
+  padding: 0.1rem 0.25rem;
+  border-radius: 0.25rem;
+}
+
+.dark .prose-editor code {
+  background: rgb(39 39 42);
+}
+
+.prose-editor hr {
+  border: none;
+  border-top: 1px solid rgb(203 213 225);
+  margin: 1rem 0;
+}
+
+.dark .prose-editor hr {
+  border-top-color: rgb(63 63 70);
+}
+
+.prose-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.75rem 0;
+}
+
+.prose-editor th,
+.prose-editor td {
+  border: 1px solid rgb(203 213 225);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+
+.dark .prose-editor th,
+.dark .prose-editor td {
+  border-color: rgb(63 63 70);
+}
+
+.prose-editor .task-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+}
+
+.prose-editor ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.25rem;
+}
+
+
+.prose-editor .task-list-item > label {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+}
+
+.prose-editor .task-list-item > span {
+  display: inline;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.prose-editor .task-list-item input[type="checkbox"] {
+  appearance: auto;
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  accent-color: rgb(59 130 246);
+}
+
+.dark .prose-editor .task-list-item input[type="checkbox"] {
+  accent-color: rgb(96 165 250);
+}
+
+
+.prose-editor .is-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: rgb(107 114 128);
+  pointer-events: none;
+  height: 0;
+}
+
+.dark .prose-editor .is-empty:first-child::before {
+  color: rgb(156 163 175);
+}
+
+/* Harper grammar error styling */
+.harper-error {
+  text-decoration: underline wavy #ef4444 !important;
+  text-decoration-skip-ink: none !important;
+  text-underline-offset: 2px !important;
+  cursor: pointer !important;
+  background-color: rgba(239, 68, 68, 0.1) !important;
+}
+
+.harper-error:hover {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+}
