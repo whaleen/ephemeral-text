@@ -1,6 +1,11 @@
-# ephemeral-text
+# ephemeral-text (legacy Electron)
 
 A minimalist text editor that respects ephemerality. It's designed as a TextEdit alternative that intentionally doesn't auto-save files or prompt for saving. Your text remains ephemeral until you explicitly choose to export it.
+
+This branch contains the legacy Electron version. The current Tauri app lives on `main`.
+
+- Tauri (current): https://github.com/whaleen/ephemeral-text
+- Legacy Electron: https://github.com/whaleen/ephemeral-text/tree/legacy-electron
 
 ## Core Philosophy
 
@@ -18,6 +23,21 @@ A minimalist text editor that respects ephemerality. It's designed as a TextEdit
 - ⌨️ Rich keyboard shortcuts
 - 📁 Configurable export directory
 - 🔄 Non-destructive file exports
+
+## Run
+
+### Development
+
+```bash
+npm install
+npm run dev
+```
+
+### Distribution build
+
+```bash
+npm run dist
+```
 
 ## Development Setup
 
